@@ -8,6 +8,58 @@ def main():
     file (e.g. _generated.py) and then run.
     """
 
+    file = input("Enter file name to read off of or enter nothing to pick your own variables")
+    select = ""
+    groupingVarAmt = ""
+    groupingAttributes = ""
+    fVector = ""
+    predicate = ""
+    havingVar = ""
+
+    if file != "":
+        with open(file) as f:
+            text = f.read().split('\n')
+
+        text = (line.strip() for line in text)
+
+        for i, line in enumerate(text):
+            if line == 'SELECT ATTRIBUTE(S):':
+                select = text[i+1].strip()
+            elif line == 'NUMBER OF GROUPING VARIABLES(N)':
+                groupingVarAmt = int(text[i+1]).strip()
+            elif line == 'GROUPING ATTRIBUTES(V)':
+                groupingAttributes = text[i+1].strip()
+            elif line == 'F-VECT([F])':
+                fVector = text[i+1].strip()
+            elif line == 'SELECT CONDITION-VECT([C])':
+                predicate = text[i].strip()
+            elif line == 'HAVING_CONDITION(G)':
+                havingVar = text[i].strip()
+            #select condition vect isn't all in a single line meanwhile all the other are so 
+            #if we hit something that isn't one of the lines
+            #we can assume it is the rest of the predicates (in a file)
+            else:
+                predicate += "," + text[i].strip()  
+    else:
+        select = input("Input each select attributes seperated by a comma: ").strip()
+        groupingVarAmt = input("Input the amount of grouping variables: ").strip()
+        groupingAttributes = input("Input the grouping attributes seperated by a comma if more than one: ").strip()
+        fVector = input("Input the list of aggregate functions each seperated by a comma: ").strip()
+        predicate = input("Input each predicate seperated by a comma and having a space after each comma: ").strip()
+        havingVar = input("Input each having condition seperated by spaces with AND or OR: ").strip().lower()
+            
+    if groupingVarAmt == '0':
+        pass #Evaluate as regular SQL query 
+
+    for pred in predicate.split(','):
+        for attribute in pred.split(','):
+            if (attribute in groupingAttributes.split(',')):
+                pass #Evaluate as an EMF query
+                break
+
+    pass # If it didn't hit either SQL or EMF query it is a MF query         
+
+
     body = """
     for row in cur:
         if row['quant'] > 10:
