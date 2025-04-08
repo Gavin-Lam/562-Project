@@ -1,4 +1,5 @@
 import subprocess
+from sqlQuery import sqlQuery
 
 
 def main():
@@ -49,7 +50,7 @@ def main():
         havingVar = input("Input each having condition seperated by spaces with AND or OR: ").strip().lower()
             
     if groupingVarAmt == '0':
-        pass #Evaluate as regular SQL query 
+        sqlQuery(select, groupingAttributes, predicate, havingVar)
 
     for pred in predicate.split(','):
         for attribute in pred.split(','):
