@@ -1,5 +1,7 @@
 import subprocess
 from sqlQuery import sqlQuery
+from mfQuery import MFQuery
+from emfQuery import EMFQuery
 
 
 def main():
@@ -33,9 +35,9 @@ def main():
             elif line == 'F-VECT([F])':
                 fVector = text[i+1].strip()
             elif line == 'SELECT CONDITION-VECT([C])':
-                predicate = text[i].strip()
+                predicate = text[i+1].strip()
             elif line == 'HAVING_CONDITION(G)':
-                havingVar = text[i].strip()
+                havingVar = text[i+1].strip()
             #select condition vect isn't all in a single line meanwhile all the other are so 
             #if we hit something that isn't one of the lines
             #we can assume it is the rest of the predicates (in a file)
@@ -55,10 +57,10 @@ def main():
     for pred in predicate.split(','):
         for attribute in pred.split(','):
             if (attribute in groupingAttributes.split(',')):
-                pass #Evaluate as an EMF query
+                EMFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)   
                 break
 
-    pass # If it didn't hit either SQL or EMF query it is a MF query         
+    MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)        
 
 
     body = """
