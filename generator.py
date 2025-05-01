@@ -23,13 +23,13 @@ def main():
         with open(file) as f:
             text = f.read().split('\n')
 
-        text = (line.strip() for line in text)
+        text = [line.strip() for line in text]
 
         for i, line in enumerate(text):
             if line == 'SELECT ATTRIBUTE(S):':
                 select = text[i+1].strip()
             elif line == 'NUMBER OF GROUPING VARIABLES(N)':
-                groupingVarAmt = int(text[i+1]).strip()
+                groupingVarAmt = int(text[i+1].strip())
             elif line == 'GROUPING ATTRIBUTES(V)':
                 groupingAttributes = text[i+1].strip()
             elif line == 'F-VECT([F])':
@@ -51,8 +51,8 @@ def main():
         predicate = input("Input each predicate seperated by a comma and having a space after each comma: ").strip()
         havingVar = input("Input each having condition seperated by spaces with AND or OR: ").strip().lower()
             
-    if groupingVarAmt == '0':
-        sqlQuery(select, groupingAttributes, predicate, havingVar)
+    if (groupingVarAmt < 1):
+        body = sqlQuery(select, groupingAttributes, predicate, havingVar, fVector)
 
     for pred in predicate.split(','):
         for attribute in pred.split(','):
@@ -63,10 +63,8 @@ def main():
     MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)        
 
 
-    body = """
-    for row in cur:
-        if row['quant'] > 10:
-            _global.append(row)
+    body = f"""
+    {body}
     """
 
     # Note: The f allows formatting with variables.
@@ -95,8 +93,8 @@ def query():
     _global = []
     {body}
     
-    return tabulate.tabulate(_global,
-                        headers="keys", tablefmt="psql")
+    #return tabulate.tabulate(_global,
+                        #headers="keys", tablefmt="psql")
 
 def main():
     print(query())
@@ -108,7 +106,7 @@ if "__main__" == __name__:
     # Write the generated code to a file
     open("_generated.py", "w").write(tmp)
     # Execute the generated code
-    subprocess.run(["python", "_generated.py"])
+    # subprocess.run(["python", "_generated.py"])
 
 
 if "__main__" == __name__:
