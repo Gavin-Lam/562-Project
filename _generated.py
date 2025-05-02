@@ -19,88 +19,128 @@ def query():
                             cursor_factory=psycopg2.extras.DictCursor)
     cur = conn.cursor()
     cur.execute("SELECT * FROM sales")
+
     
     _global = []
     
     
     from collections import defaultdict
     import re
+    from prettytable import PrettyTable
 
-    cols = [desc[0] for desc in cur.description]
-    relation = [dict(zip(cols, row)) for row in cur.fetchall()]
+    relation = cur.fetchall()
 
-    select = "cust, prod, avg(quant), max(quant)"
-    groupingAttributes = "cust, prod"
-    predicate = "'year':2016"
-    havingVar = "".strip()
-
-    select_fields = [s.strip() for s in select.split(',') if s.strip()]
-    grouping_attributes = [g.strip() for g in groupingAttributes.split(',') if g.strip()]
+    selectAttributes = [s.strip() for s in "cust, prod, avg_quant, max_quant".split(',') if s.strip()]
+    groupingAttributes = [g.strip() for g in "cust, prod".split(',') if g.strip()]
+    predicate = "year = 2020".strip()
+    havingCondition = [h.strip() for h in "".split(',') if h.strip()]
+    fVect = [f.strip() for f in "avg_quant, max_quant".split(',') if f.strip()]
 
 
-    if predicate:
-        predicate_expr = ' and '.join(predicate.split(','))
-        filtered = []
-        for t in relation:
-            try:
-                if eval(predicate_expr, {}, t):
-                    filtered.append(t)
-            except:
-                continue
-    else:
-        filtered = relation
+    MF_Struct = {}
 
+    for row in relation:
+        key = ''
+        value = {}
+        for attr in groupingAttributes:
+            key += f"{str(row[attr])},"
+        key = key[:-1]
 
-    grouped = defaultdict(list)
-    for t in filtered:
-        key = tuple(t[attr] for attr in grouping_attributes)
-        grouped[key].append(t)
-
-    result = []
-    for group_key, tuples in grouped.items():
-        aggregates = defaultdict(lambda: 0)
-        count_tracker = defaultdict(int)
-        row = {grouping_attributes[i]: val for i, val in enumerate(group_key)}
-
-        for t in tuples:
-            for field in select_fields:
-                match = re.match(r"(sum|avg|min|max|count)_(\w+)", field)
-                if not match:
-                    continue
-                prefix, func, attr = match.groups()
-                key = f"{prefix or ''}{func}_{attr}"
-
+        if predicate:
+            pred_pass = True
+            for pred in predicate.split(','):
+                lhs, rhs = pred.split('=')
+                lhs = lhs.strip()
+                rhs = rhs.strip()
                 try:
-                    if func == 'sum':
-                        aggregates[key] += t[attr]
-                    elif func == 'count':
-                        aggregates[key] += 1
-                    elif func == 'avg':
-                        aggregates[key] += t[attr]
-                        count_tracker[key] += 1
-                    elif func == 'min':
-                        aggregates[key] = min(t[attr], aggregates[key]) if key in aggregates else t[attr]
-                    elif func == 'max':
-                        aggregates[key] = max(t[attr], aggregates[key]) if key in aggregates else t[attr]
-                
-                except:
-                    continue
+                    if str(row[lhs]) != rhs:
+                        pred_pass = False
+                        break
+                except KeyError:
+                    pred_pass = False
+                    break
+            if not pred_pass:
+                continue
 
-        for k, v in aggregates.items():
-            if k.startswith('avg_') or "_avg_" in k:
-                row[k] = v / count_tracker[k] if count_tracker[k] > 0 else 0
-            else:
-                row[k] = v
-        
-        try:
-            if not havingVar or eval(havingVar, {}, row):
-                result.append(row)
-        except:
-            continue
+        if key not in MF_Struct:
+            for groupAttr in groupingAttributes:
+                colVal = row[groupAttr]
+                if colVal is not None:
+                    value[groupAttr] = colVal
 
-                
-    for r in result:
-        print(', '.join(str(r.get(f.strip(), '')) for f in select_fields))
+            for fVectAttr in fVect:
+                parts = fVectAttr.split('_')
+                func = parts[0]
+                tableCol = '_'.join(parts[1:])
+                if func == 'avg':
+                    value[fVectAttr] = {'sum': row[tableCol], 'count': 1, 'avg': row[tableCol]}
+                elif func == 'count':
+                    value[fVectAttr] = 1
+                else:
+                    value[fVectAttr] = row[tableCol]
+
+            MF_Struct[key] = value
+        else:
+            for fVectAttr in fVect:
+                parts = fVectAttr.split('_')
+                func = parts[0]
+                tableCol = '_'.join(parts[1:])
+                if func == 'sum':
+                    MF_Struct[key][fVectAttr] += int(row[tableCol])
+                elif func == 'avg':
+                    newSum = MF_Struct[key][fVectAttr]['sum'] + int(row[tableCol])
+                    newCount = MF_Struct[key][fVectAttr]['count'] + 1
+                    MF_Struct[key][fVectAttr] = {
+                        'sum': newSum,
+                        'count': newCount,
+                        'avg': newSum / newCount
+                    }
+                elif func == 'count':
+                    MF_Struct[key][fVectAttr] += 1
+                elif func == 'min':
+                    if row[tableCol] < MF_Struct[key][fVectAttr]:
+                        MF_Struct[key][fVectAttr] = int(row[tableCol])
+                elif func == 'max':
+                    if row[tableCol] > MF_Struct[key][fVectAttr]:
+                        MF_Struct[key][fVectAttr] = int(row[tableCol])
+
+    output = PrettyTable()
+    output.field_names = selectAttributes
+
+    for row in MF_Struct:
+        evalString = ''
+        if havingCondition:
+            for string in havingCondition.split(' '):
+                if string not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
+                    try:
+                        int(string)
+                        evalString += string
+                    except:
+                        if len(string.split('_')) > 1 and string.split('_')[0] == 'avg':
+                            evalString += str(MF_Struct[row][string]['avg'])
+                        else:
+                            evalString += str(MF_Struct[row][string])
+                else:
+                    evalString += f' {string} '
+            if eval(evalString.replace('=', '==')):
+                row_info = []
+                for val in selectAttributes.split(','):
+                    if len(val.split('_')) > 1 and val.split('_')[0] == 'avg':
+                        row_info += [str(MF_Struct[row][val]['avg'])]
+                    else:
+                        row_info += [str(MF_Struct[row][val])]
+                output.add_row(row_info)
+        else:
+            row_info = []
+            for val in selectAttributes:
+                if len(val.split('_')) > 1 and val.split('_')[0] == 'avg':
+                    row_info += [str(MF_Struct[row][val]['avg'])]
+                else:
+                    row_info += [str(MF_Struct[row][val])]
+            output.add_row(row_info)
+
+    print(output)
+    
     
     
     

@@ -1,11 +1,11 @@
 SELECT ATTRIBUTE(S):
-cust, prod, avg(quant), max(quant)
+cust, prod, avg_quant, max_quant
 NUMBER OF GROUPING VARIABLES(N)
 0
 GROUPING ATTRIBUTES(V)
 cust, prod
 F-VECT([F])
-sum_quant, avg_quant
+avg_quant, max_quant
 SELECT CONDITION-VECT([C])
 year = 2020
 HAVING_CONDITION(G)

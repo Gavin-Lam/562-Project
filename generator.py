@@ -41,8 +41,8 @@ def main():
             #select condition vect isn't all in a single line meanwhile all the other are so 
             #if we hit something that isn't one of the lines
             #we can assume it is the rest of the predicates (in a file)
-            else:
-                predicate += "," + text[i].strip()  
+            #else:
+                #predicate += "," + text[i].strip()  
     else:
         select = input("Input each select attributes seperated by a comma: ").strip()
         groupingVarAmt = input("Input the amount of grouping variables: ").strip()
@@ -90,6 +90,7 @@ def query():
                             cursor_factory=psycopg2.extras.DictCursor)
     cur = conn.cursor()
     cur.execute("SELECT * FROM sales")
+
     
     _global = []
     {body}
