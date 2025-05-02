@@ -1,5 +1,5 @@
 /env
 .pytest_cache
 __pycache__
-/my_rag_env
+my_rag_env
 .env
