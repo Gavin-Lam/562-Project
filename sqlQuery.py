@@ -80,10 +80,7 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
                 elif func == 'max':
                     if row[tableCol] > MF_Struct[key][fVectAttr]:
                         MF_Struct[key][fVectAttr] = int(row[tableCol])
-
-    output = PrettyTable()
-    output.field_names = selectAttributes
-
+                        
     for row in MF_Struct:
         evalString = ''
         if havingCondition:
@@ -106,7 +103,7 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
                         row_info += [str(MF_Struct[row][val]['avg'])]
                     else:
                         row_info += [str(MF_Struct[row][val])]
-                output.add_row(row_info)
+                print(row_info)
         else:
             row_info = []
             for val in selectAttributes:
@@ -114,8 +111,6 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
                     row_info += [str(MF_Struct[row][val]['avg'])]
                 else:
                     row_info += [str(MF_Struct[row][val])]
-            output.add_row(row_info)
-
-    print(output)
+            print(row_info)
     
     """

@@ -26,121 +26,100 @@ def query():
     
     from collections import defaultdict
     import re
-    from prettytable import PrettyTable
 
     relation = cur.fetchall()
 
-    selectAttributes = [s.strip() for s in "cust, prod, avg_quant, max_quant".split(',') if s.strip()]
-    groupingAttributes = [g.strip() for g in "cust, prod".split(',') if g.strip()]
-    predicate = "year = 2020".strip()
+    selectAttributes = [s.strip() for s in "cust, 1_sum_quant, 2_avg_quant".split(',') if s.strip()]
+    groupingAttributes = [g.strip() for g in "cust".split(',') if g.strip()]
+    predicate = [p.strip() for p in "1.state = 'NY',2.state = 'NJ'".split(',') if p.strip()]
     havingCondition = [h.strip() for h in "".split(',') if h.strip()]
-    fVect = [f.strip() for f in "avg_quant, max_quant".split(',') if f.strip()]
+    fVect = [f.strip() for f in "1_sum_quant, 2_avg_quant".split(',') if f.strip()]
+    groupingVarCount = 2
 
-
+    
     MF_Struct = {}
 
-    for row in relation:
-        key = ''
-        value = {}
-        for attr in groupingAttributes:
-            key += f"{str(row[attr])},"
-        key = key[:-1]
+    pList = [p.strip().split(' ') for p in predicate]
 
-        if predicate:
-            pred_pass = True
-            for pred in predicate.split(','):
-                lhs, rhs = pred.split('=')
-                lhs = lhs.strip()
-                rhs = rhs.strip()
-                try:
-                    if str(row[lhs]) != rhs:
-                        pred_pass = False
-                        break
-                except KeyError:
-                    pred_pass = False
-                    break
-            if not pred_pass:
-                continue
-
-        if key not in MF_Struct:
-            for groupAttr in groupingAttributes:
-                colVal = row[groupAttr]
-                if colVal is not None:
-                    value[groupAttr] = colVal
-
-            for fVectAttr in fVect:
-                parts = fVectAttr.split('_')
-                func = parts[0]
-                tableCol = '_'.join(parts[1:])
-                if func == 'avg':
-                    value[fVectAttr] = {'sum': row[tableCol], 'count': 1, 'avg': row[tableCol]}
-                elif func == 'count':
-                    value[fVectAttr] = 1
-                else:
-                    value[fVectAttr] = row[tableCol]
-
-            MF_Struct[key] = value
+    for i in range(int(groupingVarCount) + 1):
+        if i == 0:
+            for row in relation:
+                key = ','.join(str(row[attr]) for attr in groupingAttributes)
+                if key not in MF_Struct:
+                    value = {attr: row[attr] for attr in groupingAttributes}
+                    for fAttr in fVect:
+                        parts = fAttr.split('_')
+                        if parts[1] == 'avg':
+                            value[fAttr] = {'sum': 0, 'count': 0, 'avg': 0}
+                        elif parts[1] == 'min':
+                            value[fAttr] = float('inf')
+                        else:
+                            value[fAttr] = 0
+                    MF_Struct[key] = value
         else:
-            for fVectAttr in fVect:
-                parts = fVectAttr.split('_')
-                func = parts[0]
-                tableCol = '_'.join(parts[1:])
-                if func == 'sum':
-                    MF_Struct[key][fVectAttr] += int(row[tableCol])
-                elif func == 'avg':
-                    newSum = MF_Struct[key][fVectAttr]['sum'] + int(row[tableCol])
-                    newCount = MF_Struct[key][fVectAttr]['count'] + 1
-                    MF_Struct[key][fVectAttr] = {
-                        'sum': newSum,
-                        'count': newCount,
-                        'avg': newSum / newCount
-                    }
-                elif func == 'count':
-                    MF_Struct[key][fVectAttr] += 1
-                elif func == 'min':
-                    if row[tableCol] < MF_Struct[key][fVectAttr]:
-                        MF_Struct[key][fVectAttr] = int(row[tableCol])
-                elif func == 'max':
-                    if row[tableCol] > MF_Struct[key][fVectAttr]:
-                        MF_Struct[key][fVectAttr] = int(row[tableCol])
+            for aggregate in fVect:
+                aggParts = aggregate.split('_')
+                if int(aggParts[0]) != i:
+                    continue
+                aggFunc, aggCol = aggParts[1], aggParts[2]
 
-    output = PrettyTable()
-    output.field_names = selectAttributes
+                for row in relation:
+                    key = ','.join(str(row[attr]) for attr in groupingAttributes)
 
-    for row in MF_Struct:
+                    evalString = predicate[i - 1]
+                    for token in pList[i - 1]:
+                        if '.' in token and token.split('.')[0] == str(i):
+                            attr = token.split('.')[1]
+                            val = row[attr]
+                            evalString = evalString.replace(token, repr(val))
+                    
+                    if eval(evalString.replace('=', '==')):
+                        if aggFunc == 'sum':
+                            MF_Struct[key][aggregate] += int(row[aggCol])
+                        elif aggFunc == 'avg':
+                            prev = MF_Struct[key][aggregate]
+                            new_sum = prev['sum'] + int(row[aggCol])
+                            new_count = prev['count'] + 1
+                            MF_Struct[key][aggregate] = {
+                                'sum': new_sum,
+                                'count': new_count,
+                                'avg': new_sum / new_count
+                            }
+                        elif aggFunc == 'min':
+                            MF_Struct[key][aggregate] = min(MF_Struct[key][aggregate], int(row[aggCol]))
+                        elif aggFunc == 'max':
+                            MF_Struct[key][aggregate] = max(MF_Struct[key][aggregate], int(row[aggCol]))
+                        elif aggFunc == 'count':
+                            MF_Struct[key][aggregate] += 1
+
+
+    for key, data in MF_Struct.items():
         evalString = ''
         if havingCondition:
-            for string in havingCondition.split(' '):
-                if string not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
+            for token in havingCondition:
+                if token not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
                     try:
-                        int(string)
-                        evalString += string
+                        int(token)
+                        evalString += token
                     except:
-                        if len(string.split('_')) > 1 and string.split('_')[0] == 'avg':
-                            evalString += str(MF_Struct[row][string]['avg'])
+                        if '_' in token and token.split('_')[1] == 'avg':
+                            evalString += str(data[token]['avg'])
                         else:
-                            evalString += str(MF_Struct[row][string])
+                            evalString += str(data[token])
                 else:
-                    evalString += f' {string} '
-            if eval(evalString.replace('=', '==')):
-                row_info = []
-                for val in selectAttributes.split(','):
-                    if len(val.split('_')) > 1 and val.split('_')[0] == 'avg':
-                        row_info += [str(MF_Struct[row][val]['avg'])]
-                    else:
-                        row_info += [str(MF_Struct[row][val])]
-                output.add_row(row_info)
-        else:
-            row_info = []
-            for val in selectAttributes:
-                if len(val.split('_')) > 1 and val.split('_')[0] == 'avg':
-                    row_info += [str(MF_Struct[row][val]['avg'])]
-                else:
-                    row_info += [str(MF_Struct[row][val])]
-            output.add_row(row_info)
+                    evalString += f' {token} '
+            if not eval(evalString.replace('=', '==')):
+                continue
 
-    print(output)
+        row_info = []
+        for val in selectAttributes:
+            if '_' in val and val.split('_')[1] == 'avg':
+                row_info.append(str(data[val]['avg']))
+            else:
+                row_info.append(str(data[val]))
+        print(row_info)
     
+
     
     
     

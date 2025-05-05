@@ -25,24 +25,40 @@ def main():
 
         text = [line.strip() for line in text]
 
-        for i, line in enumerate(text):
-            if line == 'SELECT ATTRIBUTE(S):':
-                select = text[i+1].strip()
-            elif line == 'NUMBER OF GROUPING VARIABLES(N)':
-                groupingVarAmt = int(text[i+1].strip())
-            elif line == 'GROUPING ATTRIBUTES(V)':
-                groupingAttributes = text[i+1].strip()
-            elif line == 'F-VECT([F])':
-                fVector = text[i+1].strip()
-            elif line == 'SELECT CONDITION-VECT([C])':
-                predicate = text[i+1].strip()
-            elif line == 'HAVING_CONDITION(G)':
-                havingVar = text[i+1].strip()
+        i = 0
+
+        while i < len(text):
+            if(text[i] == 'SELECT ATTRIBUTE(S):'):
+                i += 1
+                select = text[i].strip()
+                i += 1
+            elif(text[i] == 'NUMBER OF GROUPING VARIABLES(N)'):
+                i += 1
+                groupingVarAmt = text[i].strip()
+                i += 1 
+            elif(text[i] == 'GROUPING ATTRIBUTES(V)'):  
+                i += 1
+                groupingAttributes = text[i].strip()
+                i += 1
+            elif(text[i] == 'F-VECT([F])'):
+                i += 1
+                fVector = text[i].strip()
+                i += 1
+            elif(text[i] == 'SELECT CONDITION-VECT([C])'):
+                i += 1
+                predicate = text[i].strip()
+                i += 1
+            elif(text[i] == 'HAVING_CONDITION(G)'):
+                i += 1
+                havingVar = text[i].strip()
+                i += 1
+            else:
+                predicate += "," + text[i].strip()
+                i += 1
             #select condition vect isn't all in a single line meanwhile all the other are so 
             #if we hit something that isn't one of the lines
             #we can assume it is the rest of the predicates (in a file)
-            #else:
-                #predicate += "," + text[i].strip()  
+            
     else:
         select = input("Input each select attributes seperated by a comma: ").strip()
         groupingVarAmt = input("Input the amount of grouping variables: ").strip()
@@ -51,16 +67,21 @@ def main():
         predicate = input("Input each predicate seperated by a comma and having a space after each comma: ").strip()
         havingVar = input("Input each having condition seperated by spaces with AND or OR: ").strip().lower()
             
-    if (groupingVarAmt < 1):
+    check = 1
+
+    if groupingVarAmt == '0':
+        check = 0
         body = sqlQuery(select, groupingAttributes, predicate, havingVar, fVector)
 
     for pred in predicate.split(','):
-        for attribute in pred.split(','):
-            if (attribute in groupingAttributes.split(',')):
-                EMFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)   
-                break
-
-    MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)        
+        if (check):
+            for attribute in pred.split(','):
+                if (attribute in groupingAttributes.split(',')):
+                    check = 0
+                    body = EMFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)   
+                    break
+    if (check):
+        body = MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)        
 
 
     body = f"""
