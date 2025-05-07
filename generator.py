@@ -74,12 +74,9 @@ def main():
         print("Using SQL Query")
         body = sqlQuery(select, groupingAttributes, predicate, havingVar, fVector)
 
-    print("Grouping Attribute: ", groupingAttributes)
     for pred in predicate.split(','):
         if (check):
-            print("Predicate: ", pred)
-            for attribute in pred.split(','):
-                print("Attribute: ", attribute)
+            for attribute in pred.split(' '):
                 if (attribute in groupingAttributes.split(',')):
                     check = 0
                     print("Using EMF Query")
@@ -90,7 +87,7 @@ def main():
 
         
     if (check):
-        print("Using EMF Query")
+        print("Using MF Query")
         body = MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)     
 
     body = f"""

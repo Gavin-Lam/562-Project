@@ -187,14 +187,24 @@ def EMFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, hav
                             evalString += str(data[token])
                 else:
                     evalString += f' {{token}} '
-        if not eval(evalString.replace('=', '==')):
-            continue
 
-        row_info = {{}}
-        for val in selectAttributes:
-            if '_' in val and val.split('_')[1] == 'avg':
-                row_info[val] = str(data[val]['avg'])
-            else:
-                row_info[val] = str(data[val])
-        table_data.append(row_info)
+            if not eval(evalString.replace('=', '==')):
+                continue
+
+            row_info = {{}}
+            for val in selectAttributes:
+                if '_' in val and val.split('_')[1] == 'avg':
+                    row_info[val] = str(data[val]['avg'])
+                else:
+                    row_info[val] = str(data[val])
+            table_data.append(row_info)
+
+        else: 
+            row_info = {{}}
+            for val in selectAttributes:
+                if '_' in val and val.split('_')[1] == 'avg':
+                    row_info[val] = str(data[val]['avg'])
+                else:
+                    row_info[val] = str(data[val])
+            table_data.append(row_info)
 """
