@@ -82,36 +82,38 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
                         MF_Struct[key][fVectAttr] = int(row[tableCol])
 
     table_data = []    
-    for row in MF_Struct:
+    for key, data in MF_Struct.items():
         evalString = ''
         if havingCondition:
-            for string in havingCondition:
-                if string not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
+            for token in havingCondition:
+                if token not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
                     try:
-                        int(string)
-                        evalString += string
+                        int(token)
+                        evalString += token
                     except:
-                        if len(string.split('_')) > 1 and string.split('_')[0] == 'avg':
-                            evalString += str(MF_Struct[row][string]['avg'])
+                        if '_' in token and token.split('_')[0] == 'avg':
+                            evalString += str(data[token]['avg'])
                         else:
-                            evalString += str(MF_Struct[row][string])
+                            evalString += str(data[token])
                 else:
-                    evalString += f'{{string}}'
+                    evalString += f' {{token}} '
 
-            if eval(evalString.replace('=', '==')):
-                row_info = {{}}
-                for val in selectAttributes:
-                    if len(val.split('_')) > 1 and val.split('_')[0] == 'avg':
-                        row_info[val] = str(MF_Struct[row][val]['avg'])
-                    else:
-                        row_info[val] = str(MF_Struct[row][val])
+            if not eval(evalString.replace('=', '==')):
+                continue
+
+            row_info = {{}}
+            for val in selectAttributes:
+                if '_' in val and val.split('_')[0] == 'avg':
+                    row_info[val] = str(data[val]['avg'])
+                else:
+                    row_info[val] = str(data[val])
+            table_data.append(row_info)
         else:
             row_info = {{}}
             for val in selectAttributes:
-                if len(val.split('_')) > 1 and val.split('_')[0] == 'avg':
-                    row_info[val] = str(MF_Struct[row][val]['avg'])
+                if '_' in val and val.split('_')[0] == 'avg':
+                    row_info[val] = str(data[val]['avg'])
                 else:
-                    row_info[val] = str(MF_Struct[row][val])
-            
-        table_data.append(row_info)
+                    row_info[val] = str(data[val])
+            table_data.append(row_info)
     """
