@@ -60,29 +60,35 @@ def main():
             #we can assume it is the rest of the predicates (in a file)
             
     else:
-        select = input("Input each select attributes seperated by a comma: ").strip()
-        groupingVarAmt = input("Input the amount of grouping variables: ").strip()
-        groupingAttributes = input("Input the grouping attributes seperated by a comma if more than one: ").strip()
-        fVector = input("Input the list of aggregate functions each seperated by a comma: ").strip()
-        predicate = input("Input each predicate seperated by a comma and having a space after each comma: ").strip()
-        havingVar = input("Input each having condition seperated by spaces with AND or OR: ").strip().lower()
+        select = input("Input each select attribute separated by a comma: ").strip()
+        groupingVarAmt = input("Input the number of grouping variables: ").strip()
+        groupingAttributes = input("Input the grouping attributes separated by a comma if more than one: ").strip()
+        fVector = input("Input the list of aggregate functions each separated by a comma: ").strip()
+        predicate = input("Input each predicate separated by a comma and having a space after each comma: ").strip()
+        havingVar = input("Input each having condition separated by spaces with AND or OR: ").strip().lower()
             
     check = 1
 
     if groupingVarAmt == '0':
         check = 0
+        print("Using SQL Query")
         body = sqlQuery(select, groupingAttributes, predicate, havingVar, fVector)
 
     for pred in predicate.split(','):
         if (check):
-            for attribute in pred.split(','):
+            for attribute in pred.split(' '):
                 if (attribute in groupingAttributes.split(',')):
                     check = 0
+                    print("Using EMF Query")
                     body = EMFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)   
                     break
-    if (check):
-        body = MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)        
+        else:
+            break
 
+        
+    if (check):
+        print("Using MF Query")
+        body = MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar)     
 
     body = f"""
     {body}
@@ -114,10 +120,11 @@ def query():
 
     
     _global = []
+
     {body}
     
-    #return tabulate.tabulate(_global,
-                        #headers="keys", tablefmt="psql")
+    return tabulate.tabulate(table_data,
+                        headers="keys", tablefmt="psql")
 
 def main():
     print(query())
