@@ -22,6 +22,7 @@ def query():
 
     
     _global = []
+
     
     
     from collections import defaultdict
@@ -29,10 +30,10 @@ def query():
 
     relation = cur.fetchall()
 
-    selectAttributes = [s.strip() for s in "cust, 1_sum_quant, 2_avg_quant".split(',') if s.strip()]
-    groupingAttributes = [g.strip() for g in "cust".split(',') if g.strip()]
-    predicate = [p.strip() for p in "1.state = 'NY',2.state = 'NJ'".split(',') if p.strip()]
-    havingCondition = [h.strip() for h in "".split(',') if h.strip()]
+    selectAttributes = [s.strip() for s in "prod, year, 1_sum_quant, 2_avg_quant".split(',') if s.strip()]
+    groupingAttributes = [g.strip() for g in "prod, year".split(',') if g.strip()]
+    predicate = [p.strip() for p in "1.prod = prod and 1.year = year,2.prod = prod".split(',') if p.strip()]
+    havingCondition = [h.strip() for h in "1_sum_quant > 2 * 2_avg_quant".split(' ') if h.strip()]
     fVect = [f.strip() for f in "1_sum_quant, 2_avg_quant".split(',') if f.strip()]
     groupingVarCount = 2
 
@@ -93,6 +94,7 @@ def query():
                             MF_Struct[key][aggregate] += 1
 
 
+    table_data = []    
     for key, data in MF_Struct.items():
         evalString = ''
         if havingCondition:
@@ -108,23 +110,22 @@ def query():
                             evalString += str(data[token])
                 else:
                     evalString += f' {token} '
-            if not eval(evalString.replace('=', '==')):
-                continue
+        if not eval(evalString.replace('=', '==')):
+            continue
 
-        row_info = []
+        row_info = {}
         for val in selectAttributes:
             if '_' in val and val.split('_')[1] == 'avg':
-                row_info.append(str(data[val]['avg']))
+                row_info[val] = str(data[val]['avg'])
             else:
-                row_info.append(str(data[val]))
-        print(row_info)
-    
+                row_info[val] = str(data[val])
+        table_data.append(row_info)
 
     
     
     
-    #return tabulate.tabulate(_global,
-                        #headers="keys", tablefmt="psql")
+    return tabulate.tabulate(table_data,
+                        headers="keys", tablefmt="psql")
 
 def main():
     print(query())

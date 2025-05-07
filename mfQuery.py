@@ -8,9 +8,9 @@ def MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havi
     selectAttributes = [s.strip() for s in "{select}".split(',') if s.strip()]
     groupingAttributes = [g.strip() for g in "{groupingAttributes}".split(',') if g.strip()]
     predicate = [p.strip() for p in "{predicate}".split(',') if p.strip()]
-    havingCondition = [h.strip() for h in "{havingVar}".split(',') if h.strip()]
+    havingCondition = [h.strip() for h in "{havingVar}".split(' ') if h.strip()]
     fVect = [f.strip() for f in "{fVector}".split(',') if f.strip()]
-    groupingVarCount = int(groupingVarAmt)
+    groupingVarCount = {groupingVarAmt}
 
     
     MF_Struct = {{}}
@@ -69,6 +69,7 @@ def MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havi
                             MF_Struct[key][aggregate] += 1
 
 
+    table_data = []    
     for key, data in MF_Struct.items():
         evalString = ''
         if havingCondition:
@@ -84,16 +85,15 @@ def MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havi
                             evalString += str(data[token])
                 else:
                     evalString += f' {{token}} '
-            if not eval(evalString.replace('=', '==')):
-                continue
+        if not eval(evalString.replace('=', '==')):
+            continue
 
-        row_info = []
+        row_info = {{}}
         for val in selectAttributes:
             if '_' in val and val.split('_')[1] == 'avg':
-                row_info.append(str(data[val]['avg']))
+                row_info[val] = str(data[val]['avg'])
             else:
-                row_info.append(str(data[val]))
-        print(row_info)
-    
+                row_info[val] = str(data[val])
+        table_data.append(row_info)
 
     """

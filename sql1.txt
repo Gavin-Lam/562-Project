@@ -1,5 +1,5 @@
 SELECT ATTRIBUTE(S):
-cust, sum(quant), avg(quant)
+cust, sum_quant, avg_quant
 NUMBER OF GROUPING VARIABLES(N)
 0
 GROUPING ATTRIBUTES(V)

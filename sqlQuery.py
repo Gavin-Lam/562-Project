@@ -1,16 +1,12 @@
 #Function to handle SQl queries
 def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
     return f"""
-    from collections import defaultdict
-    import re
-    from prettytable import PrettyTable
-
     relation = cur.fetchall()
 
     selectAttributes = [s.strip() for s in "{select}".split(',') if s.strip()]
     groupingAttributes = [g.strip() for g in "{groupingAttributes}".split(',') if g.strip()]
     predicate = "{predicate}".strip()
-    havingCondition = [h.strip() for h in "{havingVar}".split(',') if h.strip()]
+    havingCondition = [h.strip() for h in "{havingVar}".split(' ') if h.strip()]
     fVect = [f.strip() for f in "{fVector}".split(',') if f.strip()]
 
 
@@ -22,6 +18,7 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
         for attr in groupingAttributes:
             key += f"{{str(row[attr])}},"
         key = key[:-1]
+        
 
         if predicate:
             pred_pass = True
@@ -29,6 +26,8 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
                 lhs, rhs = pred.split('=')
                 lhs = lhs.strip()
                 rhs = rhs.strip()
+                rhs = rhs.replace('"', '')
+                rhs = rhs.replace("'", '')  
                 try:
                     if str(row[lhs]) != rhs:
                         pred_pass = False
@@ -40,6 +39,7 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
                 continue
 
         if key not in MF_Struct:
+        
             for groupAttr in groupingAttributes:
                 colVal = row[groupAttr]
                 if colVal is not None:
@@ -80,37 +80,31 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
                 elif func == 'max':
                     if row[tableCol] > MF_Struct[key][fVectAttr]:
                         MF_Struct[key][fVectAttr] = int(row[tableCol])
-                        
-    for row in MF_Struct:
+
+    table_data = []    
+    for key, data in MF_Struct.items():
         evalString = ''
         if havingCondition:
-            for string in havingCondition.split(' '):
-                if string not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
+            for token in havingCondition:
+                if token not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
                     try:
-                        int(string)
-                        evalString += string
+                        int(token)
+                        evalString += token
                     except:
-                        if len(string.split('_')) > 1 and string.split('_')[0] == 'avg':
-                            evalString += str(MF_Struct[row][string]['avg'])
+                        if '_' in token and token.split('_')[1] == 'avg':
+                            evalString += str(data[token]['avg'])
                         else:
-                            evalString += str(MF_Struct[row][string])
+                            evalString += str(data[token])
                 else:
-                    evalString += f' {{string}} '
-            if eval(evalString.replace('=', '==')):
-                row_info = []
-                for val in selectAttributes.split(','):
-                    if len(val.split('_')) > 1 and val.split('_')[0] == 'avg':
-                        row_info += [str(MF_Struct[row][val]['avg'])]
-                    else:
-                        row_info += [str(MF_Struct[row][val])]
-                print(row_info)
-        else:
-            row_info = []
-            for val in selectAttributes:
-                if len(val.split('_')) > 1 and val.split('_')[0] == 'avg':
-                    row_info += [str(MF_Struct[row][val]['avg'])]
-                else:
-                    row_info += [str(MF_Struct[row][val])]
-            print(row_info)
-    
+                    evalString += f' {{token}} '
+        if not eval(evalString.replace('=', '==')):
+            continue
+
+        row_info = {{}}
+        for val in selectAttributes:
+            if '_' in val and val.split('_')[1] == 'avg':
+                row_info[val] = str(data[val]['avg'])
+            else:
+                row_info[val] = str(data[val])
+        table_data.append(row_info)
     """
