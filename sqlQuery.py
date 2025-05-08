@@ -5,13 +5,15 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
 
     selectAttributes = [s.strip() for s in "{select}".split(',') if s.strip()]
     groupingAttributes = [g.strip() for g in "{groupingAttributes}".split(',') if g.strip()]
-    predicate = "{predicate}".strip()
-    havingCondition = [h.strip() for h in "{havingVar}".split(' ') if h.strip()]
+    predicate = [p.strip() for p in "{predicate}".split(',') if p.strip()]
+
+    havingCondition = [h.strip() for h in "{havingVar}".split(',') if h.strip()]
     fVect = [f.strip() for f in "{fVector}".split(',') if f.strip()]
 
-
+    # Function to handle SQL queries
     MF_Struct = {{}}
 
+    # Loop through the relation and apply the predicates
     for row in relation:
         key = ''
         value = {{}}
@@ -19,10 +21,10 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
             key += f"{{str(row[attr])}},"
         key = key[:-1]
         
-
+        # Check if the row satisfies the predicate
         if predicate:
             pred_pass = True
-            for pred in predicate.split(','):
+            for pred in predicate:
                 lhs, rhs = pred.split('=')
                 lhs = lhs.strip()
                 rhs = rhs.strip()
@@ -85,19 +87,23 @@ def sqlQuery(select, groupingAttributes, predicate, havingVar, fVector):
     for key, data in MF_Struct.items():
         evalString = ''
         if havingCondition:
-            for token in havingCondition:
-                if token not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
-                    try:
-                        int(token)
-                        evalString += token
-                    except:
-                        if '_' in token and token.split('_')[0] == 'avg':
-                            evalString += str(data[token]['avg'])
-                        else:
-                            evalString += str(data[token])
-                else:
-                    evalString += f' {{token}} '
-
+            counter = len(havingCondition) - 1
+            for condition in havingCondition:
+                for token in condition.split(' '):
+                    if token not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
+                        try:
+                            int(token)
+                            evalString += token
+                        except:
+                            if '_' in token and token.split('_')[0] == 'avg':
+                                evalString += str(data[token]['avg'])
+                            else:
+                                evalString += str(data[token])
+                    else:
+                        evalString += f' {{token}} '
+                if counter > 0:
+                    evalString += ' and '
+                    counter -= 1
             if not eval(evalString.replace('=', '==')):
                 continue
 

@@ -1,12 +1,12 @@
 SELECT ATTRIBUTE(S):
-cust, sum_quant, avg_quant
+cust, sum_quant, avg_quant, state
 NUMBER OF GROUPING VARIABLES(N)
 0
 GROUPING ATTRIBUTES(V)
-cust
+cust, state
 F-VECT([F])
 sum_quant, avg_quant
 SELECT CONDITION-VECT([C])
 state = 'NY'
 HAVING_CONDITION(G)
-avg_quant > 30
+avg_quant > 500,

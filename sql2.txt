@@ -8,4 +8,4 @@ F-VECT([F])
 avg_quant, max_quant
 SELECT CONDITION-VECT([C])
 year = 2020
-HAVING_CONDITION(G)
+

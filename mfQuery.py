@@ -1,16 +1,15 @@
 def MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havingVar):
     return f"""
-    from collections import defaultdict
-    import re
 
+    #Grab the database
     relation = cur.fetchall()
 
     selectAttributes = [s.strip() for s in "{select}".split(',') if s.strip()]
     groupingAttributes = [g.strip() for g in "{groupingAttributes}".split(',') if g.strip()]
     predicate = [p.strip() for p in "{predicate}".split(',') if p.strip()]
-    havingCondition = [h.strip() for h in "{havingVar}".split(' ') if h.strip()]
+    havingCondition = [h.strip() for h in "{havingVar}".split(',') if h.strip()]
     fVect = [f.strip() for f in "{fVector}".split(',') if f.strip()]
-    groupingVarCount = {groupingVarAmt}
+    groupingVarCount = {groupingVarAmt} 
 
     
     MF_Struct = {{}}
@@ -73,19 +72,23 @@ def MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havi
     for key, data in MF_Struct.items():
         evalString = ''
         if havingCondition:
-            for token in havingCondition:
-                if token not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
-                    try:
-                        int(token)
-                        evalString += token
-                    except:
-                        if '_' in token and token.split('_')[1] == 'avg':
-                            evalString += str(data[token]['avg'])
-                        else:
-                            evalString += str(data[token])
-                else:
-                    evalString += f' {{token}} '
-
+            counter = len(havingCondition) - 1
+            for condition in havingCondition:
+                for token in condition.split(' '):
+                    if token not in ['>', '<', '==', '<=', '>=', 'and', 'or', 'not', '*', '/', '+', '-']:
+                        try:
+                            int(token)
+                            evalString += token
+                        except:
+                            if '_' in token and token.split('_')[1] == 'avg':
+                                evalString += str(data[token]['avg'])
+                            else:
+                                evalString += str(data[token])
+                    else:
+                        evalString += f' {{token}} '
+                if counter > 0:
+                    evalString += ' and '
+                    counter -= 1
             if not eval(evalString.replace('=', '==')):
                 continue
 
@@ -104,5 +107,4 @@ def MFQuery(select, groupingVarAmt, groupingAttributes, fVector, predicate, havi
                 else:
                     row_info[val] = str(data[val])
             table_data.append(row_info)
-
     """
