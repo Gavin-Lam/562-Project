@@ -7,5 +7,5 @@ prod, month
 F-VECT([F])
 1_sum_quant, 2_sum_quant
 SELECT CONDITION-VECT([C])
-1.prod = prod and 1.month < month
-2.prod = prod and 2.month > month
+1.prod = prod and 1.month = month - 1
+2.prod = prod and 2.month = month + 1
